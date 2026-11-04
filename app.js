@@ -147,6 +147,7 @@
 
   function colourFor(entry) {
     if (entry.kind === 'exam') return '#ff4d8d';
+    if (entry.kind === 'deadline') return '#ffb020';
     if (entry.kind !== 'class') return '#2ef2b4';
     // "CS U111 L2" and "CS U111 P19" are the same course.
     var words = entry.title.split(/\s+/);
@@ -211,7 +212,7 @@
     if (!e || typeof e !== 'object') return null;
     if (typeof e.title !== 'string' || !e.title.trim()) return null;
     if (typeof e.start !== 'string' || !TIME_RE.test(e.start)) return null;
-    var kind = e.kind === 'class' || e.kind === 'exam' ? e.kind : 'routine';
+    var kind = e.kind === 'class' || e.kind === 'exam' || e.kind === 'deadline' ? e.kind : 'routine';
     var days = [];
     var date = typeof e.date === 'string' && DATE_RE.test(e.date) ? e.date : '';
     function dateList(list) {
@@ -219,7 +220,7 @@
         return typeof d === 'string' && DATE_RE.test(d);
       }) : [];
     }
-    if (kind === 'exam' && !date) return null;
+    if ((kind === 'exam' || kind === 'deadline') && !date) return null;
     if (!date) {
       if (!Array.isArray(e.days)) return null;
       days = e.days.filter(function (d, i, all) {
@@ -239,6 +240,7 @@
       days: days,
       date: date,
       evaluative: e.evaluative === true,
+      submitted: e.submitted === true,
       evalDates: dateList(e.evalDates),
       skipDates: dateList(e.skipDates),
       replaces: typeof e.replaces === 'string' ? e.replaces : '',
@@ -257,7 +259,7 @@
   function shownDate() { return addDays(todayDate(), offset); }
   function shownDay() { return dayIndex(shownDate()); }
 
-  var KIND_ORDER = { exam: 0, 'class': 1, routine: 2 };
+  var KIND_ORDER = { exam: 0, deadline: 1, 'class': 2, routine: 3 };
 
   function entriesOn(date) {
     var iso = isoDate(date);
@@ -272,6 +274,18 @@
           KIND_ORDER[a.kind] - KIND_ORDER[b.kind] ||
           a.title.localeCompare(b.title);
       });
+  }
+
+  function deadlinesSorted() {
+    return data.entries
+      .filter(function (e) { return e.kind === 'deadline'; })
+      .sort(function (a, b) {
+        return startStamp(a, parseIso(a.date)) - startStamp(b, parseIso(b.date));
+      });
+  }
+
+  function isOverdue(deadline) {
+    return !deadline.submitted && startStamp(deadline, parseIso(deadline.date)) <= Date.now();
   }
 
   function examsSorted() {
@@ -294,6 +308,7 @@
     var nextStart = null;
     list.forEach(function (e) {
       var start = minutes(e.start);
+      if (e.submitted) { statuses[e.id] = { name: 'past' }; return; }
       if (start > current) {
         if (nextStart === null) nextStart = start;
         statuses[e.id] = { name: start === nextStart ? 'next' : 'later' };
@@ -317,7 +332,7 @@
 
   function renderAll() {
     render();
-    if ($('exams').open) renderExamList();
+    if ($('exams').open) renderDatedList();
   }
 
   function renderHeader() {
@@ -359,6 +374,7 @@
     var list = entriesOn(date);
     if (list.some(function (e) { return e.kind === 'exam'; })) dots.appendChild(el('i', 'exam-dot'));
     if (list.some(function (e) { return isEvaluative(e, date); })) dots.appendChild(el('i', 'eval-dot'));
+    if (list.some(function (e) { return e.kind === 'deadline' && !e.submitted; })) dots.appendChild(el('i', 'deadline-dot'));
     var count = Math.min(list.filter(function (e) { return e.kind === 'class'; }).length, 5);
     for (var n = 0; n < count; n++) dots.appendChild(el('i'));
     btn.appendChild(dots);
@@ -466,12 +482,35 @@
     var tile = $('examTile');
     tile.textContent = '';
     var upcoming = examsSorted().filter(function (e) { return !examEnded(e); })[0];
-    var text = el('span', 'exam-tile-text');
-    text.appendChild(el('span', 'exam-tile-label', upcoming ? 'Next exam' : 'Exams'));
-    text.appendChild(el('span', 'exam-tile-title', upcoming ? upcoming.title : 'Add your exam dates'));
-    tile.appendChild(text);
+    tile.appendChild(el('span', 'tile-label', upcoming ? 'Next exam' : 'Exams'));
+    tile.appendChild(el('span', 'tile-title', upcoming ? upcoming.title : 'Add your exam dates'));
     if (upcoming) {
       tile.appendChild(timer('badge exam', startStamp(upcoming, parseIso(upcoming.date)), 'in'));
+    }
+    renderDeadlineTile();
+  }
+
+  function renderDeadlineTile() {
+    var tile = $('deadlineTile');
+    tile.textContent = '';
+    var all = deadlinesSorted();
+    var open = all.filter(function (e) { return !e.submitted; })[0];
+    var overdue = !!open && isOverdue(open);
+    var dueToday = !!open && !overdue && open.date === todayIso;
+    tile.classList.toggle('is-urgent', overdue || dueToday);
+
+    var label = 'Deadlines';
+    if (overdue) label = 'Overdue';
+    else if (dueToday) label = 'Due today';
+    else if (open) label = 'Next deadline';
+    tile.appendChild(el('span', 'tile-label', label));
+    var title = open ? open.title : all.length ? 'All submitted' : 'Add a submission';
+    tile.appendChild(el('span', 'tile-title', title));
+    if (overdue) {
+      tile.appendChild(el('span', 'badge overdue', 'Was due ' + shortDate(parseIso(open.date))));
+    } else if (open) {
+      var style = dueToday ? 'left' : 'in';
+      tile.appendChild(timer('badge deadline', startStamp(open, parseIso(open.date)), style));
     }
   }
 
@@ -523,6 +562,11 @@
   function entryTimer(entry, status) {
     var date = shownDate();
     var name = status ? status.name : 'later';
+    if (entry.kind === 'deadline') {
+      if (entry.submitted) return el('span', 'badge submitted', 'Submitted');
+      if (name === 'past' || name === 'now') return el('span', 'badge overdue', 'Overdue');
+      return timer('badge deadline', startStamp(entry, date), 'left');
+    }
     if (name === 'past') return el('span', 'badge done', 'Done');
     if (name === 'now') {
       if (!entry.end) return el('span', 'badge now', 'Now');
@@ -561,7 +605,8 @@
     card.appendChild(head);
 
     var meta = el('span', 'card-meta');
-    var label = entry.kind === 'exam' ? 'Exam' : entry.kind === 'class' ? (entry.type || 'Class') : 'Routine';
+    var label = entry.kind === 'exam' ? 'Exam' : entry.kind === 'deadline' ? 'Deadline'
+      : entry.kind === 'class' ? (entry.type || 'Class') : 'Routine';
     meta.appendChild(el('span', 'chip', label));
     if (evaluative) meta.appendChild(el('span', 'chip', 'Evaluative'));
     if (placeText) meta.appendChild(el('span', 'card-place', placeText));
@@ -672,9 +717,12 @@
 
   function syncForm() {
     var kind = radioValue('kind');
-    var isExam = kind === 'exam';
+    var isDeadline = kind === 'deadline';
+    var isExam = kind === 'exam' || isDeadline; // both belong to one real date
     var oneDate = editingOneDate();
     var showScope = !isExam && !oneDate;
+    $('startLabel').textContent = isDeadline ? 'Due at' : 'Starts';
+    $('endField').hidden = isDeadline;
     var scope = radioValue('scope');
     $('typeField').hidden = kind !== 'class';
     $('evalField').hidden = kind !== 'class' || !canBeEvaluative($('fType').value);
@@ -688,7 +736,10 @@
     if ($('exams').open) $('exams').close();
     editing = entry || null;
     var startKind = entry ? entry.kind : kind || 'routine';
-    $('sheetTitle').textContent = entry ? 'Edit' : startKind === 'exam' ? 'Add an exam' : 'Add to ' + DAYS[shownDay()];
+    $('sheetTitle').textContent = entry ? 'Edit'
+      : startKind === 'exam' ? 'Add an exam'
+      : startKind === 'deadline' ? 'Add a deadline'
+      : 'Add to ' + DAYS[shownDay()];
     $('fTitle').value = entry ? entry.title : '';
     $('fStart').value = entry ? entry.start : (slot ? slot.start : '');
     $('fEnd').value = entry ? entry.end || '' : (slot ? slot.end : '');
@@ -735,7 +786,8 @@
   form.addEventListener('submit', function (event) {
     event.preventDefault();
     var kind = radioValue('kind');
-    var isExam = kind === 'exam';
+    var isDeadline = kind === 'deadline';
+    var isExam = kind === 'exam' || isDeadline; // both belong to one real date
     var scope = scopeShown() ? radioValue('scope') : '';
     var shownIso = isoDate(shownDate());
     var oneDate = editingOneDate();
@@ -748,7 +800,7 @@
       kind: kind,
       title: $('fTitle').value.trim(),
       start: $('fStart').value,
-      end: $('fEnd').value,
+      end: isDeadline ? '' : $('fEnd').value,
       place: $('fPlace').value.trim(),
       note: $('fNote').value.trim(),
       type: kind === 'class' ? $('fType').value : '',
@@ -825,6 +877,50 @@
 
   /* ---------- exams list ---------- */
 
+  var listKind = 'exam';
+
+  function renderDatedList() {
+    var deadlines = listKind === 'deadline';
+    $('examsTitle').textContent = deadlines ? 'Deadlines' : 'Exams';
+    $('examAdd').textContent = deadlines ? 'Add a deadline' : 'Add an exam';
+    $('examEmpty').textContent = deadlines
+      ? 'No deadlines yet. Add a submission with its due date and you\'ll get a countdown to it.'
+      : 'No exams yet. Add each one with its date and you\'ll get a countdown to it.';
+    if (deadlines) renderDeadlineList();
+    else renderExamList();
+  }
+
+  function renderDeadlineList() {
+    var list = $('examList');
+    list.textContent = '';
+    var all = deadlinesSorted();
+    $('examEmpty').hidden = all.length > 0;
+    var open = all.filter(function (e) { return !e.submitted; });
+    var submitted = all.filter(function (e) { return e.submitted; }).reverse();
+
+    open.concat(submitted).forEach(function (item) {
+      var date = parseIso(item.date);
+      var badge = item.submitted ? el('span', 'badge submitted', 'Submitted')
+        : isOverdue(item) ? el('span', 'badge overdue', 'Overdue')
+        : timer('badge deadline', startStamp(item, date), item.date === todayIso ? 'left' : 'in');
+      var row = el('li', 'exam-item' + (item.submitted ? ' is-past' : ''));
+      row.style.setProperty('--c', colourFor(item));
+      var when = shortDate(date) + ' · Due ' + format(item.start);
+      row.appendChild(renderCard(item, badge, when));
+
+      var toggle = el('button', 'small-btn', item.submitted ? 'Not submitted yet' : 'Mark submitted');
+      toggle.type = 'button';
+      toggle.addEventListener('click', function () {
+        var before = clone(data.entries);
+        item.submitted = !item.submitted;
+        if (save()) toast(item.submitted ? 'Marked submitted' : 'Marked not submitted', before);
+        renderAll();
+      });
+      row.appendChild(toggle);
+      list.appendChild(row);
+    });
+  }
+
   function renderExamList() {
     var list = $('examList');
     list.textContent = '';
@@ -848,13 +944,17 @@
     });
   }
 
-  $('examTile').addEventListener('click', function () {
-    renderExamList();
+  function openDatedList(kind) {
+    listKind = kind;
+    renderDatedList();
     $('exams').showModal();
     $('examsTitle').focus();
-  });
+  }
+
+  $('examTile').addEventListener('click', function () { openDatedList('exam'); });
+  $('deadlineTile').addEventListener('click', function () { openDatedList('deadline'); });
   $('examsClose').addEventListener('click', function () { $('exams').close(); });
-  $('examAdd').addEventListener('click', function () { openSheet(null, 'exam'); });
+  $('examAdd').addEventListener('click', function () { openSheet(null, listKind); });
 
   /* ---------- backup ---------- */
 

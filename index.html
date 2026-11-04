@@ -38,7 +38,10 @@
   <div class="shell">
     <aside class="side">
       <section class="hero" id="hero" hidden></section>
-      <button type="button" class="exam-tile" id="examTile"></button>
+      <div class="tiles">
+        <button type="button" class="tile" id="examTile"></button>
+        <button type="button" class="tile deadline" id="deadlineTile"></button>
+      </div>
       <dl class="stats" id="stats"></dl>
     </aside>
     <main class="list-wrap">
@@ -75,6 +78,7 @@
         <label><input type="radio" name="kind" value="class"><span>Class</span></label>
         <label><input type="radio" name="kind" value="routine"><span>Routine</span></label>
         <label><input type="radio" name="kind" value="exam"><span>Exam</span></label>
+        <label><input type="radio" name="kind" value="deadline"><span>Deadline</span></label>
       </fieldset>
 
       <label class="field">
@@ -89,10 +93,10 @@
 
       <div class="two">
         <label class="field">
-          <span>Starts</span>
+          <span id="startLabel">Starts</span>
           <input id="fStart" type="time" required>
         </label>
-        <label class="field">
+        <label class="field" id="endField">
           <span>Ends <em>(optional)</em></span>
           <input id="fEnd" type="time">
         </label>
@@ -146,7 +150,7 @@
       <h2 id="examsTitle" tabindex="-1">Exams</h2>
       <button type="button" class="link" id="examsClose">Close</button>
     </div>
-    <p class="muted" id="examEmpty" hidden>No exams yet. Add each one with its date and you'll get a countdown to it.</p>
+    <p class="muted" id="examEmpty" hidden></p>
     <ol class="exam-list" id="examList"></ol>
     <div class="stack">
       <button type="button" class="primary" id="examAdd">Add an exam</button>

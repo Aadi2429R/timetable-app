@@ -11,6 +11,7 @@
   --violet: #6c3bff;
   --pink: #ff4d8d;
   --red: #ff5252;
+  --amber: #ffb020;
   --ink: #15123f;
   --gutter: 16px;
   --wide: 1040px;
@@ -111,6 +112,7 @@ h1 { font-size: 34px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02e
 .day-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); }
 .day-dots i.exam-dot { background: var(--pink); }
 .day-dots i.eval-dot { background: var(--red); }
+.day-dots i.deadline-dot { background: var(--amber); }
 .day.is-today { border-color: var(--mint); }
 .day.is-today .day-name { color: var(--mint); }
 .day[aria-pressed="true"] {
@@ -123,6 +125,7 @@ h1 { font-size: 34px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02e
 .day[aria-pressed="true"] .day-dots i { background: var(--ink); }
 .day[aria-pressed="true"] .day-dots i.exam-dot { background: #c2185b; }
 .day[aria-pressed="true"] .day-dots i.eval-dot { background: #c40000; }
+.day[aria-pressed="true"] .day-dots i.deadline-dot { background: #8a5a00; }
 
 /* Page layout */
 .shell { padding: 4px var(--gutter) calc(104px + env(safe-area-inset-bottom)); }
@@ -167,26 +170,41 @@ h1 { font-size: 34px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02e
 .hero-bar i { display: block; height: 100%; border-radius: 999px; background: var(--mint); }
 
 /* Exam countdown tile */
-.exam-tile {
-  width: 100%;
-  min-height: 60px;
-  padding: 9px 14px;
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tile {
+  min-height: 84px;
+  padding: 9px 12px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
   text-align: left;
   border: 1px solid rgba(255, 77, 141, 0.55);
   border-radius: 16px;
   background: rgba(255, 77, 141, 0.12);
 }
-.exam-tile-text { min-width: 0; }
-.exam-tile-label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); }
-.exam-tile-title { display: block; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.tile.deadline { border-color: rgba(255, 176, 32, 0.6); background: rgba(255, 176, 32, 0.12); }
+.tile-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.tile-title { max-width: 100%; font-size: 15px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.tile .badge { margin-top: auto; }
+.tile.deadline.is-urgent { border-color: var(--amber); background: var(--amber); color: var(--ink); }
+.tile.deadline.is-urgent .tile-label { color: var(--ink); font-weight: 800; }
+.tile.deadline.is-urgent .badge { background: var(--ink); color: var(--amber); }
 
 .exam-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
 .exam-item .card { margin-bottom: 0; background: var(--bg); }
 .exam-item.is-past .card-title { color: var(--muted); }
+.exam-item .small-btn {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--mint);
+  font-size: 14px;
+  font-weight: 700;
+}
 
 /* Numbers for the day */
 .stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
@@ -274,6 +292,9 @@ h1 { font-size: 34px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02e
 .badge.now { background: var(--pink); color: var(--ink); }
 .badge.next { background: var(--mint); color: var(--ink); }
 .badge.exam { background: var(--pink); color: var(--ink); }
+.badge.deadline { background: var(--amber); color: var(--ink); }
+.badge.overdue { background: var(--red); color: var(--ink); }
+.badge.submitted { background: var(--mint); color: var(--ink); }
 .badge.later { border: 1px solid var(--line); color: var(--text); padding: 1px 8px; }
 .badge.done { color: var(--muted); padding: 2px 0; font-weight: 700; }
 .badge { font-variant-numeric: tabular-nums; }
@@ -392,7 +413,7 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
   place-items: center;
   text-align: center;
   border-radius: 11px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--muted);
 }
