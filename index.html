@@ -24,7 +24,7 @@
       </div>
       <div class="top-actions">
         <button type="button" class="pill" id="todayBtn" hidden>Today</button>
-        <button type="button" class="icon-btn" id="menuBtn" aria-label="Backup and restore">
+        <button type="button" class="icon-btn" id="menuBtn" aria-label="Calendar and backup">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
         </button>
       </div>
@@ -159,12 +159,20 @@
 
   <dialog class="sheet" id="menu" aria-labelledby="menuTitle">
     <div class="sheet-head">
-      <h2 id="menuTitle" tabindex="-1">Backup</h2>
+      <h2 id="menuTitle" tabindex="-1">Calendar and backup</h2>
       <button type="button" class="link" id="menuClose">Close</button>
+    </div>
+    <p class="muted">Send your schedule to Google Calendar to get reminders on your phone, even when this app is closed.</p>
+    <label class="field">
+      <span>Weekly entries stop on <em>(optional)</em></span>
+      <input id="fUntil" type="date">
+    </label>
+    <div class="stack menu-gap">
+      <button type="button" class="primary" id="calendarBtn">Export to calendar</button>
     </div>
     <p class="muted">Your entries are saved on this device only. Save a backup file to keep them safe, or to move them to another phone or laptop.</p>
     <div class="stack">
-      <button type="button" class="primary" id="exportBtn">Save a backup file</button>
+      <button type="button" class="secondary" id="exportBtn">Save a backup file</button>
       <button type="button" class="secondary" id="importBtn">Restore from a backup file</button>
       <input type="file" id="importFile" accept=".json,application/json" hidden>
     </div>

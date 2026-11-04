@@ -464,6 +464,7 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 
 .muted { color: var(--muted); margin-bottom: 14px; }
 .stack { display: grid; gap: 8px; }
+.menu-gap { margin-bottom: 18px; }
 
 /* Toast */
 .toast {

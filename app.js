@@ -964,18 +964,122 @@
   });
   $('menuClose').addEventListener('click', function () { $('menu').close(); });
 
-  $('exportBtn').addEventListener('click', function () {
-    var payload = JSON.stringify({ app: 'timetable-app', v: 1, seeded: data.seeded, entries: data.entries }, null, 2);
-    var url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+  function saveFile(name, type, text) {
+    var url = URL.createObjectURL(new Blob([text], { type: type }));
     var link = el('a');
     link.href = url;
-    link.download = 'timetable-backup.json';
+    link.download = name;
     document.body.appendChild(link);
     link.click();
     link.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  $('exportBtn').addEventListener('click', function () {
+    var payload = JSON.stringify({ app: 'timetable-app', v: 1, seeded: data.seeded, entries: data.entries }, null, 2);
+    saveFile('timetable-backup.json', 'application/json', payload);
     $('menu').close();
     toast('Backup file saved');
+  });
+
+  /* ---------- calendar export ---------- */
+
+  var ICS_DAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+
+  function icsText(value) {
+    return String(value).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  }
+
+  function icsLocal(date) {
+    return isoDate(date).replace(/-/g, '') + 'T' + pad(date.getHours()) + pad(date.getMinutes()) + '00';
+  }
+
+  // Calendar files wrap long lines, with a space starting each extra line.
+  function icsFold(line) {
+    var parts = [];
+    while (line.length > 70) {
+      parts.push(line.slice(0, 70));
+      line = ' ' + line.slice(70);
+    }
+    parts.push(line);
+    return parts.join('\r\n');
+  }
+
+  function icsMoment(date, mins) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, mins);
+  }
+
+  function icsAlarm(trigger) {
+    return ['BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'TRIGGER:' + trigger, 'END:VALARM'];
+  }
+
+  function icsEvent(entry, date, extra) {
+    var start = minutes(entry.start);
+    var end = start + 15; // deadlines and entries with no end time
+    if (entry.end) {
+      end = minutes(entry.end);
+      if (end < start) end += 24 * 60;
+    }
+    var title = entry.kind === 'exam' ? 'Exam: ' + entry.title
+      : entry.kind === 'deadline' ? 'Due: ' + entry.title
+      : entry.title;
+    if (entry.kind === 'class' && canBeEvaluative(entry.type) && entry.evaluative) title += ' (Evaluative)';
+
+    var lines = [
+      'BEGIN:VEVENT',
+      'UID:' + entry.id + '@timetable-app',
+      'DTSTAMP:' + new Date().toISOString().replace(/[-:]|\.\d+/g, ''),
+      'DTSTART:' + icsLocal(icsMoment(date, start)),
+      'DTEND:' + icsLocal(icsMoment(date, end)),
+      'SUMMARY:' + icsText(title)
+    ].concat(extra);
+    if (entry.place) lines.push('LOCATION:' + icsText(entry.place));
+    var details = [entry.type, entry.note].filter(Boolean).join(' - ');
+    if (details) lines.push('DESCRIPTION:' + icsText(details));
+    lines = lines.concat(entry.kind === 'deadline' ? icsAlarm('-P1D').concat(icsAlarm('-PT2H')) : icsAlarm('-PT10M'));
+    lines.push('END:VEVENT');
+    return lines;
+  }
+
+  // The first date from today that a weekly entry happens on.
+  function firstDate(entry) {
+    for (var i = 0; i < 7; i++) {
+      var date = addDays(todayDate(), i);
+      if (entry.days.indexOf(dayIndex(date)) !== -1) return date;
+    }
+    return todayDate();
+  }
+
+  function buildCalendar(until) {
+    var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//timetable-app//EN', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Timetable'];
+    data.entries.forEach(function (entry) {
+      if (entry.date) {
+        if (entry.date >= todayIso && !entry.submitted) {
+          lines = lines.concat(icsEvent(entry, parseIso(entry.date), []));
+        }
+        return;
+      }
+      if (!entry.days.length) return;
+      var byDay = entry.days.slice().sort().map(function (d) { return ICS_DAYS[d]; }).join(',');
+      var rule = 'RRULE:FREQ=WEEKLY;BYDAY=' + byDay;
+      if (until) rule += ';UNTIL=' + until.replace(/-/g, '') + 'T235959';
+      var extra = [rule];
+      var startMins = minutes(entry.start);
+      (entry.skipDates || []).forEach(function (iso) {
+        extra.push('EXDATE:' + icsLocal(icsMoment(parseIso(iso), startMins)));
+      });
+      lines = lines.concat(icsEvent(entry, firstDate(entry), extra));
+    });
+    lines.push('END:VCALENDAR');
+    return lines.map(icsFold).join('\r\n') + '\r\n';
+  }
+
+  $('calendarBtn').addEventListener('click', function () {
+    var until = $('fUntil').value;
+    if (until && until < todayIso) { toast('Pick an end date after today'); return; }
+    saveFile('timetable.ics', 'text/calendar', buildCalendar(until));
+    $('menu').close();
+    toast('Calendar file saved');
   });
 
   $('importBtn').addEventListener('click', function () { $('importFile').click(); });

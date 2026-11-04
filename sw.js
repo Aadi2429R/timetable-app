@@ -38,7 +38,8 @@ self.addEventListener('fetch', function (event) {
   event.respondWith(
     caches.open(CACHE).then(function (cache) {
       return cache.match(request, { ignoreSearch: true }).then(function (saved) {
-        var fresh = fetch(request).then(function (response) {
+        // no-cache: ask GitHub for the newest copy instead of a 10-minute-old one.
+        var fresh = fetch(request, { cache: 'no-cache' }).then(function (response) {
           if (response.ok) cache.put(request, response.clone());
           return response;
         });
