@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>My Timetable</title>
+  <meta name="description" content="My BITS Pilani classes and daily routine, day by day.">
+  <meta name="theme-color" content="#15123F">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Timetable">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="top-row">
+      <div>
+        <p class="eyebrow" id="eyebrow"></p>
+        <h1 id="dayTitle"></h1>
+      </div>
+      <div class="top-actions">
+        <button type="button" class="pill" id="todayBtn" hidden>Today</button>
+        <button type="button" class="icon-btn" id="menuBtn" aria-label="Backup and restore">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="strip-bar">
+    <nav class="strip" id="strip" aria-label="Choose a day"></nav>
+  </div>
+
+  <div class="shell">
+    <aside class="side">
+      <section class="hero" id="hero" hidden></section>
+      <button type="button" class="exam-tile" id="examTile"></button>
+      <dl class="stats" id="stats"></dl>
+    </aside>
+    <main class="list-wrap">
+      <ol class="list" id="list"></ol>
+      <div class="empty" id="empty" hidden>
+        <p class="empty-title">Nothing planned</p>
+        <p>Tap <strong>Add</strong> to put something on this day.</p>
+      </div>
+    </main>
+  </div>
+
+  <button type="button" class="fab" id="addBtn">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
+    Add
+  </button>
+
+  <dialog class="sheet" id="sheet" aria-labelledby="sheetTitle">
+    <form id="form" novalidate>
+      <div class="sheet-head">
+        <h2 id="sheetTitle" tabindex="-1">Add</h2>
+        <button type="button" class="link" id="cancelBtn">Cancel</button>
+      </div>
+
+      <div class="field" id="scopeField" hidden>
+        <span id="scopeLabel">Applies to</span>
+        <fieldset class="seg scope" aria-labelledby="scopeLabel">
+          <label><input type="radio" name="scope" value="date"><span id="scopeDate"></span></label>
+          <label id="scopeDayWrap"><input type="radio" name="scope" value="day"><span id="scopeDay"></span></label>
+          <label><input type="radio" name="scope" value="all"><span id="scopeAll"></span></label>
+        </fieldset>
+      </div>
+
+      <fieldset class="seg" aria-label="Kind of entry">
+        <label><input type="radio" name="kind" value="class"><span>Class</span></label>
+        <label><input type="radio" name="kind" value="routine"><span>Routine</span></label>
+        <label><input type="radio" name="kind" value="exam"><span>Exam</span></label>
+      </fieldset>
+
+      <label class="field">
+        <span>Name</span>
+        <input id="fTitle" type="text" maxlength="80" autocomplete="off" required>
+      </label>
+
+      <label class="field" id="dateField" hidden>
+        <span>Date</span>
+        <input id="fDate" type="date">
+      </label>
+
+      <div class="two">
+        <label class="field">
+          <span>Starts</span>
+          <input id="fStart" type="time" required>
+        </label>
+        <label class="field">
+          <span>Ends <em>(optional)</em></span>
+          <input id="fEnd" type="time">
+        </label>
+      </div>
+
+      <label class="field" id="typeField">
+        <span>Type</span>
+        <select id="fType">
+          <option>Lecture</option>
+          <option>Tutorial</option>
+          <option>Laboratory</option>
+          <option>Other</option>
+        </select>
+      </label>
+
+      <div class="field" id="evalField" hidden>
+        <span id="evalLabel">Evaluative?</span>
+        <fieldset class="seg eval" aria-labelledby="evalLabel">
+          <label><input type="radio" name="evalMode" value="none"><span>No</span></label>
+          <label><input type="radio" name="evalMode" value="date"><span id="evalDate">Just this date</span></label>
+          <label id="evalAlwaysWrap"><input type="radio" name="evalMode" value="always"><span>Every week</span></label>
+        </fieldset>
+      </div>
+
+      <label class="field">
+        <span>Place <em>(optional)</em></span>
+        <input id="fPlace" type="text" maxlength="80" autocomplete="off">
+      </label>
+
+      <label class="field">
+        <span>Note <em>(optional)</em></span>
+        <input id="fNote" type="text" maxlength="160" autocomplete="off">
+      </label>
+
+      <div class="field" id="daysField">
+        <span id="daysLabel">Repeats on</span>
+        <div class="day-picks" id="dayPicks" role="group" aria-labelledby="daysLabel"></div>
+      </div>
+
+      <p class="error" id="formError" role="alert" hidden></p>
+
+      <div class="sheet-foot">
+        <button type="button" class="danger" id="deleteBtn" hidden>Delete</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet" id="exams" aria-labelledby="examsTitle">
+    <div class="sheet-head">
+      <h2 id="examsTitle" tabindex="-1">Exams</h2>
+      <button type="button" class="link" id="examsClose">Close</button>
+    </div>
+    <p class="muted" id="examEmpty" hidden>No exams yet. Add each one with its date and you'll get a countdown to it.</p>
+    <ol class="exam-list" id="examList"></ol>
+    <div class="stack">
+      <button type="button" class="primary" id="examAdd">Add an exam</button>
+    </div>
+  </dialog>
+
+  <dialog class="sheet" id="menu" aria-labelledby="menuTitle">
+    <div class="sheet-head">
+      <h2 id="menuTitle" tabindex="-1">Backup</h2>
+      <button type="button" class="link" id="menuClose">Close</button>
+    </div>
+    <p class="muted">Your entries are saved on this device only. Save a backup file to keep them safe, or to move them to another phone or laptop.</p>
+    <div class="stack">
+      <button type="button" class="primary" id="exportBtn">Save a backup file</button>
+      <button type="button" class="secondary" id="importBtn">Restore from a backup file</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <span id="toastMsg"></span>
+    <button type="button" class="link" id="toastUndo" hidden>Undo</button>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "My Timetable",
+  "short_name": "Timetable",
+  "description": "My BITS Pilani classes and daily routine, day by day.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#15123F",
+  "theme_color": "#15123F",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
